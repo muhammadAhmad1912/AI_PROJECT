@@ -7,7 +7,37 @@ $("dropzone").addEventListener("dragleave",()=> $("dropzone").style.borderColor=
 $("dropzone").addEventListener("drop",e=>{e.preventDefault();handlePhoto(e.dataTransfer.files[0])});
 function handlePhoto(file){if(!file||!file.type.startsWith("image/"))return;photoFile=file;if(photoUrl)URL.revokeObjectURL(photoUrl);photoUrl=URL.createObjectURL(file);$("preview").src=photoUrl;$("preview").hidden=false;$("preview-wrap").hidden=true;$("analyse").disabled=false;$("modelStatus").textContent="Ready";$("result").hidden=true;prediction=null}
 $("clearPhoto").onclick=()=>{photoFile=null;if(photoUrl)URL.revokeObjectURL(photoUrl);photoUrl=null;$("photo").value="";$("preview").hidden=true;$("preview-wrap").hidden=false;$("analyse").disabled=true;$("modelStatus").textContent="Not analysed";$("result").hidden=true;prediction=null};
-$("locate").onclick=()=>{if(!navigator.geolocation){$("locationResult").textContent="Geolocation is not supported by this browser.";return}$("locationResult").textContent="Requesting location permission…";navigator.geolocation.getCurrentPosition(p=>{coords={lat:p.coords.latitude,lng:p.coords.longitude};$("locationResult").textContent="Location detected";$("coordinates").hidden=false;$("coordinates").textContent=coords.lat.toFixed(6)+", "+coords.lng.toFixed(6);$("mapPreview").innerHTML='<span>Location detected · <a target="_blank" rel="noopener" href="https://maps.google.com/?q='+coords.lat+','+coords.lng+'">Open in Google Maps ↗</a></span>'},e=>{$("locationResult").textContent=e.code===1?"Location permission denied. You can still add a landmark.":"Could not detect location. Try again or add a landmark."},{enableHighAccuracy:true,timeout:12000})};
+$("locate").onclick=()=>{
+  const button=$("locate"),status=$("locationResult");
+  if(!window.isSecureContext){
+    status.textContent="GPS needs a secure connection. Open the published GitHub Pages HTTPS link, or use http://localhost.";
+    return;
+  }
+  if(!navigator.geolocation){
+    status.textContent="This browser does not support location. Enter a road name or nearby landmark instead.";
+    return;
+  }
+  button.disabled=true;
+  button.textContent="Finding location…";
+  status.textContent="Waiting for your browser's location permission…";
+  navigator.geolocation.getCurrentPosition(position=>{
+    coords={lat:position.coords.latitude,lng:position.coords.longitude};
+    status.textContent="Location found successfully.";
+    $("coordinates").hidden=false;
+    $("coordinates").textContent=coords.lat.toFixed(6)+", "+coords.lng.toFixed(6);
+    $("mapPreview").innerHTML='<span>Location found · <a target="_blank" rel="noopener" href="https://www.google.com/maps?q='+coords.lat+','+coords.lng+'">Open in Google Maps ↗</a></span>';
+    button.textContent="✓ Location detected";
+    button.disabled=false;
+  },error=>{
+    let message="Could not get your location. Enter a road name or landmark instead.";
+    if(error.code===1) message="Location permission was blocked. Allow location access for this site in your browser's address-bar/site settings, then try again.";
+    if(error.code===2) message="Your device could not determine its location. Check that Location Services are enabled, or enter a road name/landmark.";
+    if(error.code===3) message="Location request timed out. Try again, preferably outdoors, or enter a road name/landmark.";
+    status.textContent=message;
+    button.textContent="↻ Try location again";
+    button.disabled=false;
+  },{enableHighAccuracy:true,timeout:20000,maximumAge:60000});
+};
 $("analyse").onclick=()=>{if(!photoFile)return;$("modelStatus").textContent="Demo result";prediction={label:"Demo — model not connected"};$("result").hidden=false;$("result").innerHTML="<strong>Image uploaded.</strong><br>Model integration placeholder: connect your Teachable Machine export to enable actual predictions. This demo does not classify the image yet.";};
 function makeSummary(){const d=new Date();return{id:"RW-"+d.getFullYear()+"-"+Math.random().toString(36).slice(2,7).toUpperCase(),date:d.toLocaleString(),emirate:$("emirate").value||"Not provided",road:$("road").value||"Not provided",type:$("damageType").value,description:$("description").value||"No additional description",location:coords?coords.lat.toFixed(6)+", "+coords.lng.toFixed(6):"Not detected",map:coords?"https://maps.google.com/?q="+coords.lat+","+coords.lng:"No GPS link",ai:prediction?.label||"Not analysed"}}
 $("generate").onclick=()=>{if(!photoFile){alert("Please upload a photo first.");return}if(!coords&&!$("road").value){alert("Please detect GPS location or enter a road name / landmark.");return}const s=makeSummary();$("reportId").textContent=s.id;$("summaryDetails").innerHTML=[["Report ID",s.id],["Date & time",s.date],["Emirate",s.emirate],["Road / landmark",s.road],["GPS location",s.location],["Map link",s.map],["Damage type",s.type],["AI assessment",s.ai],["Description",s.description]].map(([a,b])=>'<div class="detail"><label>'+escapeHtml(a)+'</label><strong>'+escapeHtml(b)+'</strong></div>').join("");$("reportPhoto").innerHTML='<img src="'+photoUrl+'" alt="Road damage photo">';$("reportPreview").hidden=false;$("reportPreview").scrollIntoView({behavior:"smooth"})};
