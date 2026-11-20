@@ -2,6 +2,35 @@ const $=id=>document.getElementById(id);
 let photoFile=null,photoUrl=null,coords=null,prediction=null,tmModel=null,modelLoading=null;\nconst MODEL_URL="./model/tm-my-image-model/";\nasync function loadModel(){if(tmModel)return tmModel;if(modelLoading)return modelLoading;modelLoading=(async()=>{if(!window.tmImage)throw new Error("AI libraries did not load. Check your internet connection and refresh.");tmModel=await tmImage.load(MODEL_URL+"model.json",MODEL_URL+"metadata.json");return tmModel;})();try{return await modelLoading}catch(e){modelLoading=null;throw e}}
 $("dropzone").addEventListener("click",()=> $("photo").click());
 $("photo").addEventListener("change",e=>handlePhoto(e.target.files[0]));
+$("uploadPhoto").addEventListener("click",()=> $("photo").click());
+$("pastePhoto").addEventListener("click",async()=>{
+  try{
+    if(!navigator.clipboard?.read) throw new Error("Clipboard image access is not supported here. Try Ctrl+V instead.");
+    const items=await navigator.clipboard.read();
+    for(const item of items){
+      const type=item.types.find(t=>t.startsWith("image/"));
+      if(type){
+        const blob=await item.getType(type);
+        handlePhoto(new File([blob],"pasted-road-photo."+((type.split("/")[1]||"png").replace("jpeg","jpg")),{type}));
+        $("modelStatus").textContent="Image pasted";
+        return;
+      }
+    }
+    throw new Error("No image was found on your clipboard. Copy an image first, then try again.");
+  }catch(error){
+    alert(error.message||"Could not access the clipboard. You can also press Ctrl+V while on this page.");
+  }
+});
+document.addEventListener("paste",event=>{
+  const item=[...(event.clipboardData?.items||[])].find(entry=>entry.type.startsWith("image/"));
+  if(item){
+    const file=item.getAsFile();
+    if(file){handlePhoto(file);$("modelStatus").textContent="Image pasted";}
+  }
+});
+$("dropzone").addEventListener("keydown",event=>{
+  if(event.key==="Enter"||event.key===" "){event.preventDefault();$("photo").click();}
+});
 $("dropzone").addEventListener("dragover",e=>{e.preventDefault();$("dropzone").style.borderColor="#237258"});
 $("dropzone").addEventListener("dragleave",()=> $("dropzone").style.borderColor="");
 $("dropzone").addEventListener("drop",e=>{e.preventDefault();handlePhoto(e.dataTransfer.files[0])});
@@ -38,7 +67,7 @@ $("locate").onclick=()=>{
     button.disabled=false;
   },{enableHighAccuracy:true,timeout:20000,maximumAge:60000});
 };
-$("analyse").$("analyse").onclick=async()=>{if(!photoFile)return;const button=$("analyse"),status=$("modelStatus"),result=$("result");button.disabled=true;status.textContent="Loading model…";result.hidden=false;result.textContent="Loading AI model and analysing the image…";try{const model=await loadModel();const predictions=await model.predict($("preview"));predictions.sort((a,b)=>b.probability-a.probability);const best=predictions[0];prediction={label:best.className+" ("+(best.probability*100).toFixed(1)+"% confidence)",className:best.className,probability:best.probability};const rows=predictions.map(p=>"<div class=\"prediction-row\"><span>"+escapeHtml(p.className)+"</span><strong>"+(p.probability*100).toFixed(1)+"%</strong></div>").join("");result.innerHTML="<strong>Prediction: "+escapeHtml(best.className)+"</strong><p>Confidence: "+(best.probability*100).toFixed(1)+"%</p><div class=\"prediction-list\">"+rows+"</div><small>AI estimate only — not an engineering assessment.</small>";status.textContent="Analysis complete";const label=best.className.toLowerCase();const options=[...$("damageType").options];const match=options.find(o=>o.value.toLowerCase()===label||o.text.toLowerCase()===label);if(match&&match.value!=="AI suggestion / not selected")$("damageType").value=match.value;}catch(e){status.textContent="Model unavailable";result.innerHTML="<strong>Could not analyse this image.</strong><p>"+escapeHtml(e.message)+"</p><small>Make sure model.json, metadata.json and weights.bin are uploaded inside RoadWatch_UAE/model.</small>";prediction=null;}finally{button.disabled=!photoFile;}};\nfunction makeSummary(){const d=new Date();return{id:"RW-"+d.getFullYear()+"-"+Math.random().toString(36).slice(2,7).toUpperCase(),date:d.toLocaleString(),emirate:$("emirate").value||"Not provided",road:$("road").value||"Not provided",type:$("damageType").value,description:$("description").value||"No additional description",location:coords?coords.lat.toFixed(6)+", "+coords.lng.toFixed(6):"Not detected",map:coords?"https://maps.google.com/?q="+coords.lat+","+coords.lng:"No GPS link",ai:prediction?.label||"Not analysed"}}
+$("analyse").onclick=async()=>{if(!photoFile)return;const button=$("analyse"),status=$("modelStatus"),result=$("result");button.disabled=true;status.textContent="Loading model…";result.hidden=false;result.textContent="Loading AI model and analysing the image…";try{const model=await loadModel();const predictions=await model.predict($("preview"));predictions.sort((a,b)=>b.probability-a.probability);const best=predictions[0];prediction={label:best.className+" ("+(best.probability*100).toFixed(1)+"% confidence)",className:best.className,probability:best.probability};const rows=predictions.map(p=>"<div class=\"prediction-row\"><span>"+escapeHtml(p.className)+"</span><strong>"+(p.probability*100).toFixed(1)+"%</strong></div>").join("");result.innerHTML="<strong>Prediction: "+escapeHtml(best.className)+"</strong><p>Confidence: "+(best.probability*100).toFixed(1)+"%</p><div class=\"prediction-list\">"+rows+"</div><small>AI estimate only — not an engineering assessment.</small>";status.textContent="Analysis complete";const label=best.className.toLowerCase();const options=[...$("damageType").options];const match=options.find(o=>o.value.toLowerCase()===label||o.text.toLowerCase()===label);if(match&&match.value!=="AI suggestion / not selected")$("damageType").value=match.value;}catch(e){status.textContent="Model unavailable";result.innerHTML="<strong>Could not analyse this image.</strong><p>"+escapeHtml(e.message)+"</p><small>Make sure model.json, metadata.json and weights.bin are uploaded inside RoadWatch_UAE/model.</small>";prediction=null;}finally{button.disabled=!photoFile;}};\nfunction makeSummary(){const d=new Date();return{id:"RW-"+d.getFullYear()+"-"+Math.random().toString(36).slice(2,7).toUpperCase(),date:d.toLocaleString(),emirate:$("emirate").value||"Not provided",road:$("road").value||"Not provided",type:$("damageType").value,description:$("description").value||"No additional description",location:coords?coords.lat.toFixed(6)+", "+coords.lng.toFixed(6):"Not detected",map:coords?"https://maps.google.com/?q="+coords.lat+","+coords.lng:"No GPS link",ai:prediction?.label||"Not analysed"}}
 $("generate").onclick=()=>{if(!photoFile){alert("Please upload a photo first.");return}if(!coords&&!$("road").value){alert("Please detect GPS location or enter a road name / landmark.");return}const s=makeSummary();$("reportId").textContent=s.id;$("summaryDetails").innerHTML=[["Report ID",s.id],["Date & time",s.date],["Emirate",s.emirate],["Road / landmark",s.road],["GPS location",s.location],["Map link",s.map],["Damage type",s.type],["AI assessment",s.ai],["Description",s.description]].map(([a,b])=>'<div class="detail"><label>'+escapeHtml(a)+'</label><strong>'+escapeHtml(b)+'</strong></div>').join("");$("reportPhoto").innerHTML='<img src="'+photoUrl+'" alt="Road damage photo">';$("reportPreview").hidden=false;$("reportPreview").scrollIntoView({behavior:"smooth"})};
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function summaryText(){const s=makeSummary();return "ROADWATCH UAE — ROAD DAMAGE REPORT\nReport ID: "+s.id+"\nDate/time: "+s.date+"\nEmirate: "+s.emirate+"\nRoad/landmark: "+s.road+"\nGPS: "+s.location+"\nMap: "+s.map+"\nDamage type: "+s.type+"\nAI assessment: "+s.ai+"\nDescription: "+s.description+"\n\nAI assessment is automated and is not an official engineering inspection. This report has not been submitted to government."}
