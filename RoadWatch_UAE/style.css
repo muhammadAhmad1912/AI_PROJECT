@@ -69,3 +69,7 @@ footer{margin-top:10px}
 .photo-actions button{flex:1}
 .dropzone:focus-visible{outline:3px solid rgba(67,140,107,.25);outline-offset:3px}
 @media(max-width:420px){.photo-actions{flex-direction:column}}
+
+@media print{
+  .preview-section > .section-heading{display:none!important}
+}
