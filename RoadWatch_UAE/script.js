@@ -1,6 +1,7 @@
 const $=id=>document.getElementById(id);
 let photoFile=null,photoUrl=null,coords=null,prediction=null,tmModel=null,modelLoading=null;
-const MODEL_URL="./model/tm-my-image-model/";\nasync function loadModel(){if(tmModel)return tmModel;if(modelLoading)return modelLoading;modelLoading=(async()=>{if(!window.tmImage)throw new Error("AI libraries did not load. Check your internet connection and refresh.");tmModel=await tmImage.load(MODEL_URL+"model.json",MODEL_URL+"metadata.json");return tmModel;})();try{return await modelLoading}catch(e){modelLoading=null;throw e}}
+const MODEL_URL="./model/tm-my-image-model/";
+async function loadModel(){if(tmModel)return tmModel;if(modelLoading)return modelLoading;modelLoading=(async()=>{if(!window.tmImage)throw new Error("AI libraries did not load. Check your internet connection and refresh.");tmModel=await tmImage.load(MODEL_URL+"model.json",MODEL_URL+"metadata.json");return tmModel;})();try{return await modelLoading}catch(e){modelLoading=null;throw e}}
 $("dropzone").addEventListener("click",()=> $("photo").click());
 $("photo").addEventListener("change",e=>handlePhoto(e.target.files[0]));
 $("uploadPhoto").addEventListener("click",()=> $("photo").click());
