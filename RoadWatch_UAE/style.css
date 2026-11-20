@@ -64,3 +64,8 @@ body{
 footer{margin-top:10px}
 @media(max-width:800px){.hero-art{height:300px}.stats div{padding:4px 0}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
+
+.photo-actions{display:flex;gap:10px;margin-top:12px}
+.photo-actions button{flex:1}
+.dropzone:focus-visible{outline:3px solid rgba(67,140,107,.25);outline-offset:3px}
+@media(max-width:420px){.photo-actions{flex-direction:column}}
